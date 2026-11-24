@@ -1,0 +1,56 @@
+{
+  "page": {
+    "title": "Повнофункціональний фінансовий менеджер",
+    "heading": "Реєстрація",
+    "name": { "type": "text", "placeholder": "Іван Петренко" },
+    "email": { "type": "email", "placeholder": "your@email.com" },
+    "password": { "type": "password", "placeholder": "Мінімум 6 символів" },
+    "confirmPassword": { "type": "password", "placeholder": "Повторіть пароль" },
+    "passwordToggle": { "labelWhenHidden": "Show password", "labelWhenShown": "Hide password" },
+    "currency": { "default": "UAH", "options": ["UAH", "USD", "EUR", "GBP"] },
+    "submitText": "Зареєструватися",
+    "loginLinkText": "Увійти"
+  },
+  "passwordPolicy": { "minLength": 6 },
+  "existingUser": { "email": "user@demo.com" },
+  "validation": [
+    {
+      "case": "empty form",
+      "values": { "name": "", "email": "", "password": "" },
+      "expected": {
+        "errors": {
+          "name": "Ім'я обов'язкове",
+          "email": "Email обов'язковий",
+          "password": "Пароль обов'язковий",
+          "confirmPassword": "Підтвердження паролю обов'язкове"
+        }
+      }
+    },
+    {
+      "case": "name too short",
+      "values": { "name": "A" },
+      "expected": { "errors": { "name": "Ім'я повинно містити мінімум 2 символи" } }
+    },
+    {
+      "case": "invalid email format",
+      "values": { "email": "a@b" },
+      "expected": { "errors": { "email": "Невірний формат email" } }
+    },
+    {
+      "case": "password shorter than policy",
+      "values": { "password": "12345" },
+      "expected": { "errors": { "password": "Пароль повинен містити мінімум 6 символів" } }
+    },
+    {
+      "case": "empty password confirmation",
+      "values": { "confirmPassword": "" },
+      "expected": { "errors": { "confirmPassword": "Підтвердження паролю обов'язкове" } }
+    },
+    {
+      "case": "password confirmation mismatch",
+      "values": { "confirmPassword": "Different#12345" },
+      "expected": { "errors": { "confirmPassword": "Паролі не співпадають" } }
+    }
+  ],
+  "messages": { "duplicateEmail": "Користувач з таким email вже існує" }
+}

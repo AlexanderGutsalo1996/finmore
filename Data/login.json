@@ -1,0 +1,45 @@
+{
+  "page": {
+    "title": "Повнофункціональний фінансовий менеджер",
+    "heading": "Вхід до системи",
+    "email": { "type": "email", "placeholder": "your@email.com" },
+    "password": { "type": "password", "placeholder": "Введіть пароль" },
+    "passwordToggle": { "labelWhenHidden": "Show password", "labelWhenShown": "Hide password" },
+    "submitText": "Увійти",
+    "registerLinkText": "Зареєструватися"
+  },
+  "unregisteredUser": { "email": "not.registered@example.com", "password": "Wrong#12345" },
+  "validation": [
+    {
+      "case": "empty form",
+      "email": "",
+      "password": "",
+      "expected": { "errors": { "email": "Email обов'язковий", "password": "Пароль обов'язковий" } }
+    },
+    {
+      "case": "empty password",
+      "email": "user@example.com",
+      "password": "",
+      "expected": { "errors": { "password": "Пароль обов'язковий" } }
+    },
+    {
+      "case": "empty email",
+      "email": "",
+      "password": "Any#12345",
+      "expected": { "errors": { "email": "Email обов'язковий" } }
+    },
+    {
+      "case": "invalid email format (app validation)",
+      "email": "a@b",
+      "password": "Any#12345",
+      "expected": { "errors": { "email": "Невірний формат email" } }
+    },
+    {
+      "case": "email without at-sign (native browser validation)",
+      "email": "plainstring",
+      "password": "Any#12345",
+      "expected": { "errors": {}, "nativeEmailInvalid": true }
+    }
+  ],
+  "messages": { "invalidCredentials": "Невірний email або пароль" }
+}
