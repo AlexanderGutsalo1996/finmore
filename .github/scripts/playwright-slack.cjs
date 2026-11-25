@@ -34,6 +34,16 @@ function listSection(header, icon, items) {
   return lines;
 }
 
+// 15.1 s under a minute, 3 m 47 s from a minute up.
+function formatDuration(ms) {
+  const seconds = ms / 1000;
+  if (seconds < 59.95) return `${seconds.toFixed(1)} s`;
+  const total = Math.round(seconds);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  return `${h ? `${h} h ` : ""}${m} m ${total % 60} s`;
+}
+
 function buildMessage(report, env) {
   const stats = report?.stats;
   const flakyCount = stats?.flaky || 0;
@@ -52,7 +62,7 @@ function buildMessage(report, env) {
     const { expected = 0, unexpected = 0, flaky = 0, skipped = 0, duration = 0 } = stats;
     lines.push(
       `*Total:* ${expected + unexpected + flaky + skipped} | ✅ Passed: ${expected} | ❌ Failed: ${unexpected} | ⚠️ Flaky: ${flaky} | ⏭️ Skipped: ${skipped}`,
-      `Duration: ${(duration / 1000).toFixed(1)} seconds`
+      `Duration: ${formatDuration(duration)}`
     );
     const { failed, flaky: flakyTests } = collectIssues(report);
     lines.push(
@@ -63,14 +73,20 @@ function buildMessage(report, env) {
     lines.push(`Test job: ${escapeSlack(env.JOB_STATUS || 'unknown')} | No JSON report available (setup or execution may have failed).`);
   }
 
+  // Report = our tracker, Report Al = Allure, Report PW = Playwright HTML, GitHub = the Actions run.
   const links = [];
-  if (env.ALLURE_HTML_URL) links.push(`<${env.ALLURE_HTML_URL}|Download Allure report (HTML)>`);
   if (env.PAGES_URL) {
+    // GitHub Pages is on: every link opens straight in the browser.
     const base = env.PAGES_URL.endsWith('/') ? env.PAGES_URL : `${env.PAGES_URL}/`;
-    links.push(`<${base}allure/|Allure Report>`, `<${base}playwright/|Playwright Report>`);
+    links.push(`<${base}tracker/|Report>`, `<${base}allure/|Report Al>`, `<${base}playwright/|Report PW>`);
+  } else {
+    // Pages is off: artifacts are zip downloads and cannot open in the browser.
+    if (env.TRACKER_URL) links.push(`<${env.TRACKER_URL}|Report (zip)>`);
+    if (env.ALLURE_HTML_URL) links.push(`<${env.ALLURE_HTML_URL}|Report Al (zip)>`);
+    if (env.PW_URL) links.push(`<${env.PW_URL}|Report PW (zip)>`);
   }
   if (env.GITHUB_SERVER_URL && env.GITHUB_REPOSITORY && env.GITHUB_RUN_ID) {
-    links.push(`<${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}|Run & downloadable artifacts>`);
+    links.push(`<${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}|GitHub>`);
   }
   if (links.length) lines.push(links.join(' | '));
 

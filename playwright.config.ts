@@ -9,6 +9,7 @@ const localEnvPath = resolve(__dirname, '.env.local');
 if (existsSync(localEnvPath)) loadEnvFile(localEnvPath);
 
 const isCI = !!process.env.CI;
+const evidenceMode = process.env.EVIDENCE_MODE === '1'; // full evidence for every test (npm run test:evidence)
 
 const reporter: ReporterDescription[] = [
   ['list'],
@@ -16,6 +17,7 @@ const reporter: ReporterDescription[] = [
   // detail:false keeps only our labelled test.step()s in Allure; Playwright's internal API steps
   // (e.g. `Fill "<value>"`) would otherwise print typed values, including passwords.
   ['allure-playwright', { resultsDir: 'allure-results', detail: false }],
+  ['./reporters/neon-tracker.ts'],
 ];
 if (isCI) {
   reporter.push(['json', { outputFile: 'playwright-summary.json' }]);
@@ -36,8 +38,15 @@ export default defineConfig({
     baseURL: getBaseUrl(),
     testIdAttribute: 'data-testid',
     screenshot: 'only-on-failure',
-    trace: 'retain-on-failure',
-    video: 'retain-on-failure',
+    trace: evidenceMode ? 'on' : 'retain-on-failure',
+    video: evidenceMode
+      ? { mode: 'on', size: { width: 1440, height: 900 } }
+      : { mode: 'on', size: { width: 1280, height: 720 } }, // video of every test; the tracker publishes it per spec
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'], ...(evidenceMode ? { viewport: { width: 1440, height: 900 } } : {}) },
+    },
+  ],
 });

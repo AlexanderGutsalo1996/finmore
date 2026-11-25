@@ -1,5 +1,6 @@
 import { Page, Locator, expect, test } from '@playwright/test';
 import { Logger } from '../config/Logger';
+import { evidenceFor } from '../fixtures/evidence';
 
 // Allows expected values to be either text or a regular expression.
 type Matcher = string | RegExp;
@@ -13,6 +14,7 @@ interface SensitiveOptions {
 export abstract class BasePage {
     readonly page: Page;
     protected readonly logger: Logger;
+    private quiet = 0; // > 0 while helper steps (the visibility pre-checks of click) must not add video pauses
 
     protected constructor(page: Page) {
         this.page = page;
@@ -27,10 +29,18 @@ export abstract class BasePage {
      */
     protected async step<T>(message: string, action: () => Promise<T>): Promise<T> {
         this.logger.info(message);
+        // Captions never show typed values: fills and value checks get a generic text.
+        const evidence = evidenceFor(this.page);
+        const caption = message.startsWith('Fill ') ? 'Fill form field' : message.startsWith('Expect value ') ? 'Verify field value' : message;
+        await evidence?.caption(caption).catch(() => {});
 
         try {
-            return await test.step(message, action);
+            const result = await test.step(message, action);
+            if (this.quiet === 0) await evidence?.pace(message).catch(() => {});
+            if (message.startsWith('Expect ')) await evidence?.checkpoint(caption).catch(() => {});
+            return result;
         } catch (error) {
+            await evidence?.caption(caption, 'fail').catch(() => {});
             const reason = error instanceof Error ? error.message.split('\n')[0] : String(error);
             this.logger.error(`${message} -> FAILED: ${reason}`);
             throw error;
@@ -56,8 +66,14 @@ export abstract class BasePage {
 
     // Verifies that an element is visible and enabled, then clicks it.
     async click(locator: Locator, name?: string): Promise<void> {
-        await this.expectVisible(locator, name);
-        await this.expectEnabled(locator, name);
+        this.quiet++;
+        try {
+            await this.expectVisible(locator, name);
+            await this.expectEnabled(locator, name);
+        } finally {
+            this.quiet--;
+        }
+        await evidenceFor(this.page)?.highlight(locator);
         await this.step(`Click: ${this.label(locator, name)}`, () => locator.click());
     }
 
@@ -65,9 +81,13 @@ export abstract class BasePage {
     async fill(locator: Locator, value: string, name?: string, opts?: SensitiveOptions): Promise<void> {
         // Note: Playwright's own HTML report/trace still record the typed value in the internal `locator.fill`
         // step, so only ever type throw-away values (the Allure report hides internal steps, see config).
-        await this.step(`Fill "${this.show(value, opts)}" into: ${this.label(locator, name)}`, () =>
-            locator.fill(value)
-        );
+        await this.step(`Fill "${this.show(value, opts)}" into: ${this.label(locator, name)}`, async () => {
+            // With evidence pacing the text is typed like a fast user instead of being pasted instantly.
+            const delay = evidenceFor(this.page)?.typingDelay() ?? 0;
+            if (!delay) return locator.fill(value);
+            await locator.fill('');
+            await locator.pressSequentially(value, { delay });
+        });
     }
 
     // Selects a dropdown option by its value.

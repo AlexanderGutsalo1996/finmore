@@ -6,9 +6,12 @@
     "test": "playwright test",
     "typecheck": "tsc --noEmit",
     "report:html": "playwright show-report",
-    "report:allure": "allure generate allure-results --clean -o allure-report && allure open allure-report"
+    "report:allure": "allure generate allure-results --clean -o allure-report && allure open allure-report",
+    "test:evidence": "node scripts/run-evidence.cjs",
+    "report:tracker": "node scripts/open-tracker.cjs"
   },
   "devDependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@playwright/test": "^1.63.0",
     "@types/node": "^26.6.5",
     "allure-commandline": "^2.46.1",

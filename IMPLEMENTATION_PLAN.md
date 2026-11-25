@@ -20,7 +20,7 @@ Other tunables (defaults are in the sections referenced):
 
 | Tunable | Default | Section |
 |---------|---------|---------|
-| Schedule | daily 18:00 `Europe/Kyiv` | 12 |
+| Schedule | daily 00:07 `Europe/Kyiv` (off the :00 mark: GitHub delays scheduled runs most at the start of every hour) | 12 |
 | Allure local port | `5050` (as in reference) | 11 |
 | Pages publishing | off until repo variable `PUBLISH_PAGES=true` | 12 |
 | Playwright version / Node | as in reference (`^1.63.0`) / Node LTS | 7.1 |
@@ -39,6 +39,7 @@ Other tunables (defaults are in the sections referenced):
 6. **Git:** do not `git init`, commit, push, merge or create branches/PRs without explicit user approval. At the end give a summary and a suggested commit message.
 7. **Secrets:** never place a secret, token, webhook or real credential in Git, logs, reports, Allure attachments or Slack messages.
 8. Verify each phase with the commands in its "Verify" block before continuing.
+9. **`.env.local`:** create it in Phase 1 as a copy of `.env.example` (Section 7.2) and keep it git-ignored. After creating it, never read, print, edit, overwrite or commit it — the user adds secrets there (e.g. `SLACK_WEBHOOK_URL`). Use process environment variables for temporary switches during verification.
 
 ---
 
@@ -164,9 +165,10 @@ Static fetch result: the HTML `<title>` is "Повнофункціональни
 ### Phase 1 — Bootstrap `<NEW_PROJECT_DIR>`
 - [ ] Copy/adapt from `<REFERENCE_PROJECT>`: `tsconfig.json`, `.gitignore` (+ `.runtime/`, `site/`, `playwright-summary.json` already there), `config/Logger.ts`.
 - [ ] Create `package.json` (Section 7.1), `.env.example` (7.2), `config/env.ts` (7.3).
+- [ ] Create **`.env.local`** as a plain copy of `.env.example` (no BOM, `SLACK_WEBHOOK_URL` left empty) and confirm it is git-ignored (rule `.env.*` in `.gitignore`; `git check-ignore -v .env.local` once the repo exists). Never write a secret into it.
 - [ ] `npm install`, `npx playwright install chromium`.
 
-**Verify:** `npm run typecheck` passes; `npx playwright --version` works.
+**Verify:** `npm run typecheck` passes; `npx playwright --version` works; `.env.local` exists and is ignored by Git.
 
 ### Phase 2 — Framework core
 - [ ] `playwright.config.ts` (7.4), `allure-teardown.ts` (11.1).
@@ -275,6 +277,8 @@ Versions as in the reference (verify at install time; keep Allure CLI 2 + `allur
 | `PUBLISH_PAGES` | n/a | repo **variable** | `true` enables Pages | unset |
 
 Rules: `.env.local` is git-ignored and loaded with `loadEnvFile` (real env vars win); `.env.example` is committed with **empty values only** and no BOM; CI never uses files — only `vars.*` / `secrets.*`.
+
+**`.env.local` is created by the agent in Phase 1** as a plain copy of `.env.example` (no BOM, all secrets empty) and is never committed. After that the agent must not read, print, edit or overwrite it: the user fills in `SLACK_WEBHOOK_URL` (and any other secret) later — paste **only the value after `=`**, without the key and without quotes (a duplicated key such as `SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL=https://…` makes the Slack reporter fail). For temporary switches during verification use process environment variables, not `.env.local`.
 
 `.env.example`:
 ```dotenv
@@ -483,25 +487,8 @@ Titles: `TC-0X: …` (naming only). Parametrised cases create **one test per JSO
 
 ## 11. Local Execution, Diagnostics, Reports
 
-### 11.1 `allure-teardown.ts` (reference + cross-platform fix)
-```ts
-import { spawnSync, spawn } from 'node:child_process';
-
-const bin = process.platform === 'win32' ? 'allure.cmd' : 'allure';
-// resolved via node_modules/.bin (npm adds it to PATH only for npm scripts, so use the explicit path)
-import path from 'node:path';
-
-export default async function globalTeardown() {
-  const root = process.cwd();
-  const allure = path.join(root, 'node_modules', '.bin', bin);
-
-  const result = spawnSync(allure, ['generate', 'allure-results', '--clean', '-o', 'allure-report'], { cwd: root, stdio: 'inherit', shell: true });
-  if (result.status !== 0) { console.error('Allure report generation failed'); return; }
-
-  spawn(allure, ['open', 'allure-report', '--port', '5050'], { cwd: root, detached: true, stdio: 'ignore', shell: true }).unref();
-}
-```
-Only registered in config when not `CI` and `NO_REPORT_OPEN` is unset. Known quirk kept from the reference: the detached server may keep running; a second run reuses port 5050 and the regenerated report just needs a browser refresh.
+### 11.1 `allure-teardown.ts` (windowless report server)
+Generates the report (`allure generate allure-results --clean -o allure-report`; binary `allure.cmd` on Windows, `allure` elsewhere) and serves it with `scripts/serve-report.cjs`, a plain detached node process started with `windowsHide`, instead of `allure open`: under Windows Terminal the chained console apps (`cmd → allure → java`) ignore `windowsHide` and leave a console window in the taskbar. The server listens on port 5050 (or the next free one) and writes `{ pid, port }` to `.runtime/allure-server.json`; the next run stops it (`taskkill /T` on Windows) before generating a fresh report, and the browser is opened with `cmd /c start` / `open` / `xdg-open`. `allure-setup.ts` wipes `allure-results` before every run. Both are registered in the config only when not `CI` and `NO_REPORT_OPEN` is unset (the setup runs always).
 
 ### 11.2 Execution matrix
 | Setting | Local | CI |
@@ -519,6 +506,8 @@ Only registered in config when not `CI` and `NO_REPORT_OPEN` is unset. Known qui
 ## 12. CI/CD — `.github/workflows/playwright.yml`
 Based on the reference workflow. Jobs: `ui` → `pages` (optional) → `notify` (always). One UI job (no API scope).
 
+> The workflow file in the repo is the source of truth. Compared with the YAML below it also uploads the test tracker as artifact `neon-tracker`, copies `tracker-report` to the Pages site (`/tracker/`), and passes `tracker_url` / `pw_url` to the Slack job. The schedule is 00:07 `Europe/Kyiv` (see Section 17).
+
 ```yaml
 name: Playwright Tests
 
@@ -533,8 +522,8 @@ on:
         required: false
         type: string
   schedule:
-    - cron: '0 18 * * *'
-      timezone: 'Europe/Kyiv'          # same native syntax as the reference project
+    - cron: '7 0 * * *'              # 00:07 Kyiv; avoid :00 (GitHub delays runs most at the start of every hour)
+      timezone: 'Europe/Kyiv'
 
 permissions:
   contents: read
@@ -647,9 +636,9 @@ Notes
 Start from the reference script (CommonJS, `buildMessage`, `escapeSlack`, `redirect:'error'`, 15 s timeout, no logging of errors/webhook, fork-PR skip) and change only:
 1. **Status:** `JOB_STATUS === 'success'` → ✅ Passed (⚠️ "Passed with flaky" when `flaky > 0`), otherwise ❌ Failed (also when the JSON is missing).
 2. **Failed tests:** in `visit()`, list `❌ <spec title> — <file>:<line>` (title = `[...describe titles, spec.title]` joined by ` › `), same for ⚠️ flaky; cap 15 each, then "…and N more". Titles are credential-free by rule (Section 9); `escapeSlack` still applies.
-3. **Links** (new lines): **`Download Allure report (HTML)` = `ALLURE_HTML_URL`** (direct artifact download — a zip with one `index.html`; requires being signed in to GitHub with repo access; works even when Pages is off), `Allure Report` = `PAGES_URL + 'allure/'`, `Playwright Report` = `PAGES_URL + 'playwright/'` (only when `PAGES_URL` is non-empty), and the existing GitHub run link labelled "Run & downloadable artifacts".
+3. **Links** (one line, short labels): `Report` = `PAGES_URL + 'tracker/'` (test tracker), `Report Al` = `PAGES_URL + 'allure/'`, `Report PW` = `PAGES_URL + 'playwright/'` — they open straight in the browser and need GitHub Pages; without Pages the same labels point to the artifact zips (`TRACKER_URL`, `ALLURE_HTML_URL`, `PW_URL`) and read `(zip)`. `GitHub` = the Actions run URL.
 4. **Context line:** repository, branch (`GITHUB_HEAD_REF || GITHUB_REF_NAME`), trigger + run number, `BASE_URL`.
-5. Keep: Total · Passed · Failed · Flaky · Skipped, `Duration: X.X seconds`.
+5. Keep: Total · Passed · Failed · Flaky · Skipped, and `Duration:` as `15.1 s` under a minute, `3 m 47 s` from a minute up.
 6. Missing webhook → throw (reference behaviour, D2) except `EXTERNAL_PR === 'true'`.
 7. Still exports `buildMessage` so it can be unit-checked locally.
 
@@ -666,7 +655,7 @@ Never include errors, stack traces, emails, passwords or the webhook in the mess
 6. Structure and architecture rules (Section 8) incl. "assertions only in Page Objects", locator priority, no duplicated locators, data in JSON, generated data via generator.
 7. How to add a test / page object / data file (checklist).
 8. Reports and diagnostics (HTML, Allure, trace viewer `npx playwright show-trace`), where CI artifacts and Pages links are.
-9. CI: triggers (incl. 18:00 Europe/Kyiv), jobs, Secrets/Variables to configure, Pages caveats.
+9. CI: triggers (incl. the daily Europe/Kyiv schedule and its GitHub delay caveat), jobs, Secrets/Variables to configure, Pages caveats.
 10. Slack: what the report contains; local reporter behaviour.
 11. Security notes: no secrets in Git, throw-away generated users, traces contain typed inputs, `.runtime/` is local-only.
 12. Limitations: no Allure trend history, cleanup limits (H1/H5), Chromium only.
@@ -680,10 +669,10 @@ Never include errors, stack traces, emails, passwords or the webhook in the mess
 |---|-------|-----|----------|
 | V1 | Types | `npm run typecheck` | exit 0 |
 | V2 | Full run | `npm test` | all TC pass; Allure opens automatically |
-| V3 | No auto-open | set `NO_REPORT_OPEN=1` in `.env.local`, `npm test` | report not opened |
+| V3 | No auto-open | set `NO_REPORT_OPEN=1` in the process environment (PowerShell: `$env:NO_REPORT_OPEN=1`), `npm test` | report not opened |
 | V4 | CI settings | `CI=1 npx playwright test --list` (PowerShell: `$env:CI=1`) and inspect resolved config | workers 1, retries 2, `playwright-summary.json` configured |
 | V5 | Flakiness | `npx playwright test --repeat-each=5` | 100 % pass |
-| V6 | Parallel safety | `WORKERS=4` in `.env.local` | all pass |
+| V6 | Parallel safety | `WORKERS=4` in the process environment (PowerShell: `$env:WORKERS=4`) | all pass |
 | V7 | Diagnostics | temporarily break one locator, run, then revert | screenshot, `trace.zip`, video exist for the failed test and appear in both reports |
 | V8 | Spec purity | search `tests/` for `expect(`, `getBy`, `locator(`, `@` literals, `password` literals | no matches |
 | V9 | Locator uniqueness | review `pages/` | no element declared twice; priority respected |
@@ -695,7 +684,7 @@ Never include errors, stack traces, emails, passwords or the webhook in the mess
 | V15 | Workflow | `actionlint` if available, otherwise careful manual review | valid syntax/expressions |
 | V16 | Git policy | `git status` | nothing committed/pushed without approval |
 
-Final report to the user: what was done, V1–V16 results, deviations (with reasons), items needing user action (repo, Secrets/Variables, Pages), the Section 2.3 findings, and a suggested commit message.
+Final report to the user: what was done, V1–V16 results, deviations (with reasons), items needing user action (repo, Secrets/Variables, Pages, filling `SLACK_WEBHOOK_URL` in `.env.local`), the Section 2.3 findings, and a suggested commit message.
 
 ---
 
@@ -708,15 +697,28 @@ Final report to the user: what was done, V1–V16 results, deviations (with reas
 - [ ] Reusable fixtures; no copy-pasted logic; `test.step()` in specs/fixtures.
 - [ ] Static data + expected results in JSON; dynamic data only via generator; titles credential-free.
 - [ ] Multi-environment via `BASE_URL` (env / `.env.local` / CI variable / manual input).
-- [ ] `.env.local` ignored, `.env.example` committed (no BOM, no values), secrets only in GitHub Secrets; nothing sensitive in Git, reports or logs.
+- [ ] `.env.local` created from `.env.example` in Phase 1 and ignored by Git (the agent never writes secrets into it); `.env.example` committed (no BOM, no values), secrets only in GitHub Secrets; nothing sensitive in Git, reports or logs.
 - [ ] Unique users registered via UI; generated users stored securely (local, per-file, ignored); cleanup implemented where supported, otherwise documented.
 - [ ] Tests independent; Chromium default; local workers configurable, CI 1; retries local 0 / CI 2; no tags.
 - [ ] Screenshots, traces, videos on failure.
 - [ ] Allure generated and auto-opened locally (Windows + macOS); Allure + Playwright HTML uploaded as artifacts and published to Pages when permitted.
-- [ ] Workflow with triggers: push `main`, PR, daily 18:00 `Europe/Kyiv`, manual.
+- [ ] Workflow with triggers: push `main`, PR, the daily `Europe/Kyiv` schedule (00:07), manual.
 - [ ] Slack report after **every** CI run (incl. failures/no results): statistics, duration, failed test names, report links, **and a direct download link to a single-file Allure HTML report** (opens by double-click, no server needed).
 - [ ] README complete; Verification Plan executed and reported.
 - [ ] **Nothing committed, pushed or merged without user approval.**
+
+---
+
+## 17. Test tracker, evidence and reporting (added after hand-off)
+
+- **Test tracker** — `reporters/neon-tracker.ts` writes a self-contained `tracker-report/index.html` (dark neon theme): PASS/FAIL/FLAKY per test, failures first, the exact failing step marked in the step timeline, spec and page-object line, a heuristic diagnosis (probable app bug / test issue / environment / flaky / check screenshot) with Expected vs Received and next steps, inline video, screenshots and trace with download buttons. The header shows the project link from `baseURL` and durations as `0.95 s` / `19.6 s` / `1 m 34 s`. Opened automatically after local runs (not on CI, not with `NO_REPORT_OPEN`; `npm run report:tracker` reopens it). On CI it is uploaded as artifact `neon-tracker` and copied to Pages (`/tracker/`). Output `tracker-report/` is git-ignored.
+- **Evidence** — `fixtures/evidence.ts` (auto fixture) and `reporters/evidence-files.ts`: every UI test records a video (step captions and click highlights drawn into the page) and a final screenshot; failures add an annotated failure screenshot and a trace. The tracker converts WebM to MP4 (`@ffmpeg-installer/ffmpeg`) and publishes the latest evidence per spec into the git-ignored `evidence/<spec>/` folder (`<spec>.video.mp4` = all tests of the spec, `<spec>.tcN.screenshot.png`); a run replaces only the specs it executed. `npm run test:evidence` (`EVIDENCE_MODE=1`) adds a screenshot after every assertion, a 1440×900 video and a trace for every test. `BasePage.step()/click()/fill()` call the recorder; captions never show typed values.
+- **Video speed** — pacing makes the video play at the speed of a quick user: pauses after steps (open 900 ms, click 500, fill 200, expect 250, other 150) and typing at 45 ms per character. `EVIDENCE_PACE=fast` halves the pauses, `off` disables pacing. The visibility pre-checks inside `click()` are not paced. Cost: a local run takes about 2 minutes instead of 20 seconds.
+- **Slack** — one line of links (`Report`, `Report Al`, `Report PW`, `GitHub`) and the duration as `3 m 47 s` (Section 13). The links open in the browser only when GitHub Pages is on (`PUBLISH_PAGES=true` plus Settings → Pages → Source = GitHub Actions); otherwise they are zip artifacts labelled `(zip)`.
+- **Pages are public and Playwright reports record typed values** (internal `fill` steps, traces), so anything published must come from throw-away data. Real accounts must never be used by tests or CI secrets (the premiereonline project had to replace one).
+- **Schedule** — daily 00:07 `Europe/Kyiv`. The minute is deliberately not :00: GitHub delays scheduled runs most at the start of every hour (delays of hours were observed), so a run can start much later than configured.
+- `--reporter=...` on the command line replaces the configured reporters (no Allure results, no tracker for such a run).
+- The same tracker, evidence layer, Slack format and Pages setup are used in the premiereonline project.
 
 ---
 

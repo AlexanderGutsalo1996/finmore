@@ -11,8 +11,10 @@ on:
         required: false
         type: string
   schedule:
-    - cron: '0 18 * * *'
-      timezone: 'Europe/Kyiv' # same native syntax as the reference project
+    # 00:07 Kyiv, deliberately not :00 - GitHub delays scheduled runs most at the start of every hour
+    # (observed delays of several hours). Change the time here only.
+    - cron: '7 0 * * *'
+      timezone: 'Europe/Kyiv'
 
 permissions:
   contents: read
@@ -28,6 +30,8 @@ jobs:
     timeout-minutes: 60
     outputs:
       allure_html_url: ${{ steps.allure_html.outputs.artifact-url }} # direct download link of the Allure HTML artifact
+      tracker_url: ${{ steps.tracker.outputs.artifact-url }} # direct download link of the neon tracker artifact
+      pw_url: ${{ steps.pw_report.outputs.artifact-url }} # direct download link of the Playwright report artifact
     env:
       CI: true
       BASE_URL: ${{ inputs.base_url || vars.BASE_URL }} # empty -> DEFAULT_BASE_URL from config/env.ts
@@ -62,9 +66,11 @@ jobs:
           mkdir -p site
           cp -r allure-report site/allure
           cp -r playwright-report site/playwright
-          printf '<h1>FinMore test reports</h1><ul><li><a href="allure/">Allure Report</a></li><li><a href="playwright/">Playwright HTML Report</a></li></ul>' > site/index.html
+          [ -d tracker-report ] && cp -r tracker-report site/tracker || true
+          printf '<h1>FinMore test reports</h1><ul><li><a href="allure/">Allure Report</a></li><li><a href="playwright/">Playwright HTML Report</a></li><li><a href="tracker/">Test tracker</a></li></ul>' > site/index.html
 
       - name: Upload Playwright report
+        id: pw_report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
@@ -89,6 +95,16 @@ jobs:
         with:
           name: allure-report-html
           path: allure-report-single/index.html
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload neon tracker (HTML + evidence videos/screenshots)
+        id: tracker
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-tracker
+          path: tracker-report/
           retention-days: 30
           if-no-files-found: ignore
 
@@ -169,5 +185,7 @@ jobs:
           JOB_STATUS: ${{ needs.ui.result }}
           PAGES_URL: ${{ needs.pages.outputs.page_url }}
           ALLURE_HTML_URL: ${{ needs.ui.outputs.allure_html_url }}
+          TRACKER_URL: ${{ needs.ui.outputs.tracker_url }}
+          PW_URL: ${{ needs.ui.outputs.pw_url }}
           BASE_URL: ${{ inputs.base_url || vars.BASE_URL }}
           EXTERNAL_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}

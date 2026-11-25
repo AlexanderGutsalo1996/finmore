@@ -1,4 +1,4 @@
-import { test as base } from '@playwright/test';
+import { test as base } from './evidence';
 import dashboardData from '../Data/dashboard.json';
 import { generateRegistrationData, type RegistrationData } from '../Data/generators';
 import { saveGeneratedUser } from '../helpers/userStore';

@@ -3,6 +3,16 @@ import { relative } from 'node:path';
 
 const escape = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+// 15.1 s under a minute, 3 m 47 s from a minute up.
+const formatDuration = (ms: number) => {
+  const seconds = ms / 1000;
+  if (seconds < 59.95) return `${seconds.toFixed(1)} s`;
+  const total = Math.round(seconds);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  return `${h ? `${h} h ` : ""}${m} m ${total % 60} s`;
+};
+
 export default class LocalSlackReporter implements Reporter {
   private suite?: Suite;
   private executed = false;
@@ -42,7 +52,7 @@ export default class LocalSlackReporter implements Reporter {
       `*Playwright Tests — ${status}*`,
       'Project: finmore | Trigger: Local (VS Code / CLI)',
       `*Total:* ${tests.length} | ✅ Passed: ${counts.expected} | ❌ Failed: ${counts.unexpected} | ⚠️ Flaky: ${counts.flaky} | ⏭️ Skipped: ${counts.skipped}`,
-      `Duration: ${(result.duration / 1000).toFixed(1)} seconds`,
+      `Duration: ${formatDuration(result.duration)}`,
       ...(issues.length ? ['*Failed or flaky tests:*', ...issues.slice(0, 15)] : []),
       ...(issues.length > 15 ? [`…and ${issues.length - 15} more in the local report.`] : []),
       'Reports: local Playwright HTML and Allure.',
