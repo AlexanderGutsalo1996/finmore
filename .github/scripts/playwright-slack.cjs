@@ -48,7 +48,8 @@ function buildMessage(report, env) {
   const stats = report?.stats;
   const flakyCount = stats?.flaky || 0;
   const passed = env.JOB_STATUS === 'success' && !!stats; // a missing report is never "passed"
-  const status = !passed ? '❌ Failed' : flakyCount > 0 ? '⚠️ Passed with flaky tests' : '✅ Passed';
+  const flakyOnly = !passed && !!stats && (stats.unexpected || 0) === 0 && flakyCount > 0;
+  const status = flakyOnly ? '❌ Failed: flaky tests' : !passed ? '❌ Failed' : flakyCount > 0 ? '⚠️ Passed with flaky tests' : '✅ Passed';
 
   const branch = env.GITHUB_HEAD_REF || env.GITHUB_REF_NAME || 'unknown';
   const lines = [

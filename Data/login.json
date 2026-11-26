@@ -2,44 +2,83 @@
   "page": {
     "title": "Повнофункціональний фінансовий менеджер",
     "heading": "Вхід до системи",
-    "email": { "type": "email", "placeholder": "your@email.com" },
-    "password": { "type": "password", "placeholder": "Введіть пароль" },
-    "passwordToggle": { "labelWhenHidden": "Show password", "labelWhenShown": "Hide password" },
+    "email": {
+      "type": "email",
+      "placeholder": "your@email.com"
+    },
+    "password": {
+      "type": "password",
+      "placeholder": "Введіть пароль"
+    },
+    "passwordToggle": {
+      "labelWhenHidden": "Show password",
+      "labelWhenShown": "Hide password"
+    },
     "submitText": "Увійти",
     "registerLinkText": "Зареєструватися"
   },
-  "unregisteredUser": { "email": "not.registered@example.com", "password": "Wrong#12345" },
+  "unregisteredUser": {
+    "email": "not.registered@example.com",
+    "password": "Wrong#12345"
+  },
   "validation": [
     {
       "case": "empty form",
+      "requirement": "LOGIN-03, LOGIN-04",
       "email": "",
       "password": "",
-      "expected": { "errors": { "email": "Email обов'язковий", "password": "Пароль обов'язковий" } }
+      "expected": {
+        "errors": {
+          "email": "Email обов'язковий",
+          "password": "Пароль обов'язковий"
+        }
+      }
     },
     {
       "case": "empty password",
+      "requirement": "LOGIN-04",
       "email": "user@example.com",
       "password": "",
-      "expected": { "errors": { "password": "Пароль обов'язковий" } }
+      "expected": {
+        "errors": {
+          "password": "Пароль обов'язковий"
+        }
+      }
     },
     {
       "case": "empty email",
+      "requirement": "LOGIN-03",
       "email": "",
       "password": "Any#12345",
-      "expected": { "errors": { "email": "Email обов'язковий" } }
+      "expected": {
+        "errors": {
+          "email": "Email обов'язковий"
+        }
+      }
     },
     {
       "case": "invalid email format (app validation)",
+      "requirement": "LOGIN-05",
       "email": "a@b",
       "password": "Any#12345",
-      "expected": { "errors": { "email": "Невірний формат email" } }
+      "expected": {
+        "errors": {
+          "email": "Невірний формат email"
+        }
+      }
     },
     {
       "case": "email without at-sign (native browser validation)",
+      "requirement": "LOGIN-06",
       "email": "plainstring",
       "password": "Any#12345",
-      "expected": { "errors": {}, "nativeEmailInvalid": true }
+      "expected": {
+        "errors": {},
+        "nativeEmailInvalid": true
+      }
     }
   ],
-  "messages": { "invalidCredentials": "Невірний email або пароль" }
+  "messages": {
+    "invalidCredentials": "Невірний email або пароль"
+  }
 }

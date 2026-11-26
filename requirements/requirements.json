@@ -1,0 +1,25 @@
+{
+  "note": "Draft register written after ad hoc testing: every item below was derived from the observed behaviour of the stand and is NOT yet confirmed by the product owner. Confirm each item (confirmed: true) or correct it; a failing test then means the product or the requirement is wrong, not only the test.",
+  "requirements": [
+    { "id": "LOGIN-01", "area": "Login", "text": "The login page shows an email field, a password field, a submit button and a link to registration.", "source": "observed", "confirmed": false },
+    { "id": "LOGIN-02", "area": "Login", "text": "The password field is masked and a toggle reveals and hides it.", "source": "observed", "confirmed": false },
+    { "id": "LOGIN-03", "area": "Login", "text": "Submitting without an email shows the error \"Email обов'язковий\".", "source": "observed", "confirmed": false },
+    { "id": "LOGIN-04", "area": "Login", "text": "Submitting without a password shows the error \"Пароль обов'язковий\".", "source": "observed", "confirmed": false },
+    { "id": "LOGIN-05", "area": "Login", "text": "An email with an invalid format is rejected with \"Невірний формат email\".", "source": "observed", "confirmed": false },
+    { "id": "LOGIN-06", "area": "Login", "text": "An email without \"@\" is blocked by the browser's own validation and nothing is submitted.", "source": "observed", "confirmed": false },
+    { "id": "LOGIN-07", "area": "Login", "text": "The login page links to registration.", "source": "observed", "confirmed": false },
+    { "id": "LOGIN-08", "area": "Login", "text": "An unknown user cannot log in and sees \"Невірний email або пароль\".", "source": "observed", "confirmed": false },
+    { "id": "LOGIN-09", "area": "Login", "text": "A registered user can log in and lands on the dashboard that shows their name.", "source": "observed", "confirmed": false },
+    { "id": "LOGIN-10", "area": "Login", "text": "A logged-in user can log out and returns to the login page.", "source": "observed", "confirmed": false },
+    { "id": "REG-01", "area": "Registration", "text": "The registration page shows name, email, password, password confirmation and currency fields and a submit button.", "source": "observed", "confirmed": false },
+    { "id": "REG-02", "area": "Registration", "text": "The password and confirmation fields are masked and each has a reveal/hide toggle.", "source": "observed", "confirmed": false },
+    { "id": "REG-03", "area": "Registration", "text": "The registration page links back to login.", "source": "observed", "confirmed": false },
+    { "id": "REG-04", "area": "Registration", "text": "Valid data registers a new user, who is logged in and sees the dashboard.", "source": "observed", "confirmed": false },
+    { "id": "REG-05", "area": "Registration", "text": "Empty required fields (name, email, password, confirmation) each show an error.", "source": "observed", "confirmed": false },
+    { "id": "REG-06", "area": "Registration", "text": "A name shorter than 2 characters is rejected.", "source": "observed", "confirmed": false },
+    { "id": "REG-07", "area": "Registration", "text": "An email with an invalid format is rejected.", "source": "observed", "confirmed": false },
+    { "id": "REG-08", "area": "Registration", "text": "A password shorter than 6 characters is rejected.", "source": "observed", "confirmed": false },
+    { "id": "REG-09", "area": "Registration", "text": "A confirmation that differs from the password is rejected.", "source": "observed", "confirmed": false },
+    { "id": "REG-10", "area": "Registration", "text": "An email that is already registered is rejected.", "source": "observed", "confirmed": false }
+  ]
+}

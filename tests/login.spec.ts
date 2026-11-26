@@ -7,6 +7,7 @@ interface LoginValidationCase {
   case: string;
   email: string;
   password: string;
+  requirement: string;
   expected: LoginValidationExpectation;
 }
 
@@ -18,7 +19,7 @@ test.describe('TC-01: Login page — fields, visibility, validation', () => {
     });
   });
 
-  test('TC-01A: form elements are displayed', async ({ loginPage }) => {
+  test('TC-01A: form elements are displayed', { annotation: { type: 'requirement', description: 'LOGIN-01, LOGIN-02' } }, async ({ loginPage }) => {
     await test.step('Check heading, fields, button and links', async () => {
       await loginPage.expectFormElements(loginData.page);
     });
@@ -32,7 +33,7 @@ test.describe('TC-01: Login page — fields, visibility, validation', () => {
 
   const validationCases: LoginValidationCase[] = loginData.validation;
   for (const row of validationCases) {
-    test(`TC-01B: validation — ${row.case}`, async ({ loginPage, dashboardPage }) => {
+    test(`TC-01B: validation — ${row.case}`, { annotation: { type: 'requirement', description: row.requirement } }, async ({ loginPage, dashboardPage }) => {
       await test.step('Submit the form with the case values', async () => {
         await loginPage.login(row);
       });
@@ -44,7 +45,7 @@ test.describe('TC-01: Login page — fields, visibility, validation', () => {
     });
   }
 
-  test('TC-01C: registration link opens the registration page', async ({ loginPage, registrationPage }) => {
+  test('TC-01C: registration link opens the registration page', { annotation: { type: 'requirement', description: 'LOGIN-07' } }, async ({ loginPage, registrationPage }) => {
     await test.step('Click the registration link', async () => {
       await loginPage.openRegistration();
     });
@@ -55,7 +56,7 @@ test.describe('TC-01: Login page — fields, visibility, validation', () => {
 });
 
 test.describe('TC-02: Login with an unregistered user', () => {
-  test('TC-02: unregistered user cannot log in', async ({ loginPage, dashboardPage }) => {
+  test('TC-02: unregistered user cannot log in', { annotation: { type: 'requirement', description: 'LOGIN-08' } }, async ({ loginPage, dashboardPage }) => {
     await test.step('Open the login page', async () => {
       await loginPage.open();
       await loginPage.expectLoaded();
@@ -72,7 +73,7 @@ test.describe('TC-02: Login with an unregistered user', () => {
 });
 
 test.describe('TC-05: Login with a registered user', () => {
-  test('TC-05: registered user logs in and out', async ({ registeredUser, loginPage, dashboardPage }) => {
+  test('TC-05: registered user logs in and out', { annotation: { type: 'requirement', description: 'LOGIN-09, LOGIN-10' } }, async ({ registeredUser, loginPage, dashboardPage }) => {
     await test.step('Log in as the registered user', async () => {
       await loginPage.login(registeredUser);
     });

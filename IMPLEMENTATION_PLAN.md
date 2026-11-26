@@ -20,7 +20,7 @@ Other tunables (defaults are in the sections referenced):
 
 | Tunable | Default | Section |
 |---------|---------|---------|
-| Schedule | daily 00:07 `Europe/Kyiv` (off the :00 mark: GitHub delays scheduled runs most at the start of every hour) | 12 |
+| Schedule | nightly 00:07 `Europe/Kyiv`, triggered externally via `workflow_dispatch` (GitHub's own schedule starts hours late) | 12, 17 |
 | Allure local port | `5050` (as in reference) | 11 |
 | Pages publishing | off until repo variable `PUBLISH_PAGES=true` | 12 |
 | Playwright version / Node | as in reference (`^1.63.0`) / Node LTS | 7.1 |
@@ -506,7 +506,7 @@ Generates the report (`allure generate allure-results --clean -o allure-report`;
 ## 12. CI/CD — `.github/workflows/playwright.yml`
 Based on the reference workflow. Jobs: `ui` → `pages` (optional) → `notify` (always). One UI job (no API scope).
 
-> The workflow file in the repo is the source of truth. Compared with the YAML below it also uploads the test tracker as artifact `neon-tracker`, copies `tracker-report` to the Pages site (`/tracker/`), and passes `tracker_url` / `pw_url` to the Slack job. The schedule is 00:07 `Europe/Kyiv` (see Section 17).
+> The workflow file in the repo is the source of truth. Compared with the YAML below it also uploads the test tracker as artifact `neon-tracker`, copies `tracker-report` to the Pages site (`/tracker/`), and passes `tracker_url` / `pw_url` to the Slack job. The nightly run is triggered externally (see Section 17); the workflow has no `schedule:` block.
 
 ```yaml
 name: Playwright Tests
@@ -700,25 +700,56 @@ Final report to the user: what was done, V1–V16 results, deviations (with reas
 - [ ] `.env.local` created from `.env.example` in Phase 1 and ignored by Git (the agent never writes secrets into it); `.env.example` committed (no BOM, no values), secrets only in GitHub Secrets; nothing sensitive in Git, reports or logs.
 - [ ] Unique users registered via UI; generated users stored securely (local, per-file, ignored); cleanup implemented where supported, otherwise documented.
 - [ ] Tests independent; Chromium default; local workers configurable, CI 1; retries local 0 / CI 2; no tags.
+- [ ] Test validity (Section 18): every test names a requirement; `lint:tests` and `check:requirements` pass; flaky = failure; requirements confirmed by the owner (or visibly marked as unconfirmed).
 - [ ] Screenshots, traces, videos on failure.
 - [ ] Allure generated and auto-opened locally (Windows + macOS); Allure + Playwright HTML uploaded as artifacts and published to Pages when permitted.
-- [ ] Workflow with triggers: push `main`, PR, the daily `Europe/Kyiv` schedule (00:07), manual.
+- [ ] Workflow with triggers: push `main`, PR, the nightly 00:07 `Europe/Kyiv` run (external trigger), manual.
 - [ ] Slack report after **every** CI run (incl. failures/no results): statistics, duration, failed test names, report links, **and a direct download link to a single-file Allure HTML report** (opens by double-click, no server needed).
 - [ ] README complete; Verification Plan executed and reported.
 - [ ] **Nothing committed, pushed or merged without user approval.**
 
 ---
 
-## 17. Test tracker, evidence and reporting (added after hand-off)
+## 17. Test report, evidence and reporting (added after hand-off)
 
-- **Test tracker** — `reporters/neon-tracker.ts` writes a self-contained `tracker-report/index.html` (dark neon theme): PASS/FAIL/FLAKY per test, failures first, the exact failing step marked in the step timeline, spec and page-object line, a heuristic diagnosis (probable app bug / test issue / environment / flaky / check screenshot) with Expected vs Received and next steps, inline video, screenshots and trace with download buttons. The header shows the project link from `baseURL` and durations as `0.95 s` / `19.6 s` / `1 m 34 s`. Opened automatically after local runs (not on CI, not with `NO_REPORT_OPEN`; `npm run report:tracker` reopens it). On CI it is uploaded as artifact `neon-tracker` and copied to Pages (`/tracker/`). Output `tracker-report/` is git-ignored.
-- **Evidence** — `fixtures/evidence.ts` (auto fixture) and `reporters/evidence-files.ts`: every UI test records a video (step captions and click highlights drawn into the page) and a final screenshot; failures add an annotated failure screenshot and a trace. The tracker converts WebM to MP4 (`@ffmpeg-installer/ffmpeg`) and publishes the latest evidence per spec into the git-ignored `evidence/<spec>/` folder (`<spec>.video.mp4` = all tests of the spec, `<spec>.tcN.screenshot.png`); a run replaces only the specs it executed. `npm run test:evidence` (`EVIDENCE_MODE=1`) adds a screenshot after every assertion, a 1440×900 video and a trace for every test. `BasePage.step()/click()/fill()` call the recorder; captions never show typed values.
-- **Video speed** — pacing makes the video play at the speed of a quick user: pauses after steps (open 900 ms, click 500, fill 200, expect 250, other 150) and typing at 45 ms per character. `EVIDENCE_PACE=fast` halves the pauses, `off` disables pacing. The visibility pre-checks inside `click()` are not paced. Cost: a local run takes about 2 minutes instead of 20 seconds.
-- **Slack** — one line of links (`Report`, `Report Al`, `Report PW`, `GitHub`) and the duration as `3 m 47 s` (Section 13). The links open in the browser only when GitHub Pages is on (`PUBLISH_PAGES=true` plus Settings → Pages → Source = GitHub Actions); otherwise they are zip artifacts labelled `(zip)`.
+- **Test report (tracker)**: `reporters/test-tracker.ts` writes a self-contained `tracker-report/index.html` with three donut charts (Specs, Tests, Steps), PASS/FAIL/FLAKY per test (failures first), the exact failing step marked in the step timeline, the spec and page-object line, a heuristic diagnosis (probable app bug / test issue / environment / flaky / check screenshot) with Expected vs Received and next steps, API calls for backend tests, and inline video, screenshots and trace with download buttons. The header shows the project link from `baseURL`; durations read `0.95 s` / `19.6 s` / `1 m 34 s`. The design is restrained for client work: light by default, Dark and Corporate selectable in the page or with `TRACKER_THEME`. It opens automatically after local runs (not on CI, not with `NO_REPORT_OPEN`; `npm run report:tracker` reopens it). On CI it is uploaded as artifact `test-tracker` and copied to Pages (`/tracker/`). Output `tracker-report/` is git-ignored.
+- **Internal neon version**: the original dark neon "night city" design is kept for internal use only in `D:\Projects\playwright-neon-tracker` (reporter, evidence files, README). It is not used in client-facing projects.
+- **Evidence**: `fixtures/evidence.ts` (auto fixture) and `reporters/evidence-files.ts`. Every UI test records a video (step captions and click highlights drawn into the page) and a final screenshot; failures add an annotated failure screenshot and a trace. The tracker converts WebM to MP4 (`@ffmpeg-installer/ffmpeg`) and publishes the latest evidence per spec into the git-ignored `evidence/<spec>/` folder (`<spec>.video.mp4` = all tests of the spec, `<spec>.tcN.screenshot.png`); a run replaces only the specs it executed. `npm run test:evidence` (`EVIDENCE_MODE=1`) adds a screenshot after every assertion, a 1440x900 video and a trace for every test. `BasePage.step()/click()/fill()` call the recorder; captions never show typed values.
+- **Video speed**: pacing makes the video play at the speed of a quick user: pauses after steps (open 900 ms, click 500, fill 200, expect 250, other 150) and typing at 45 ms per character. `EVIDENCE_PACE=fast` halves the pauses, `off` disables pacing. The visibility pre-checks inside `click()` are not paced. Cost: a local run takes about 2 minutes instead of 20 seconds.
+- **Slack**: duration as `3 m 47 s` and one line of links (`Report`, `Report Al`, `Report PW`, `GitHub`), see Section 13. The links open in the browser only when GitHub Pages is on (`PUBLISH_PAGES=true` plus Settings -> Pages -> Source = GitHub Actions); otherwise they are zip artifacts labelled `(zip)`.
 - **Pages are public and Playwright reports record typed values** (internal `fill` steps, traces), so anything published must come from throw-away data. Real accounts must never be used by tests or CI secrets (the premiereonline project had to replace one).
-- **Schedule** — daily 00:07 `Europe/Kyiv`. The minute is deliberately not :00: GitHub delays scheduled runs most at the start of every hour (delays of hours were observed), so a run can start much later than configured.
+- **Schedule**: the nightly run at 00:07 `Europe/Kyiv` is triggered from outside (cron-job.org calling `workflow_dispatch` with a fine-grained token; setup in the README) because GitHub's own `schedule:` trigger started 4-8 hours late. The workflow has no `schedule:` block.
 - `--reporter=...` on the command line replaces the configured reporters (no Allure results, no tracker for such a run).
 - The same tracker, evidence layer, Slack format and Pages setup are used in the premiereonline project.
+
+---
+
+## 18. Test validity principles (a green test must mean a correct product)
+
+A green test only means "the test agrees with the application", not "the application is correct". The goal is a test that is technically and logically valid; a pass is only worth something when the expectation is independent of the thing it checks. The worst case is a broken feature behind a green test.
+
+**Principles**
+
+1. **The oracle is outside the application.** Expected results come from requirements or acceptance criteria, not from observing the running app. A check written from observation is a *characterization* (regression guard) and must be labelled as such; it never proves correctness.
+2. **Never fix a test to make it green.** After a failure first decide: product bug, test defect or environment. An expectation may change only with a reference to a requirement or ticket. The report's diagnosis supports this triage.
+3. **A negative scenario proves the app rejects wrong input.** The test does something wrong on purpose and expects a rejection (message, no navigation, no state change). If the expected message is missing, the app most likely accepted the input: a probable product bug (the report says so), not a reason to relax the test. Assert both the rejection and that the forbidden outcome did not happen.
+4. **Assert the outcome, not the absence of errors.** Every test ends with a positive check of the expected result. No swallowed errors, conditional skips, `force: true`, fixed waits, or tests without an assertion.
+5. **A test that needed a retry is a failure.** Retries only exist to capture the trace of the failed attempt; the run still fails (`failOnFlakyTests`).
+6. **A test must be able to fail.** Before a new or changed test is trusted, see it fail once against broken behaviour (a sabotaged expectation or a faulty app state). Later this can be automated with fault injection.
+7. **Traceability.** Every test names the requirement(s) it verifies; every requirement has a test; a requirement without a test is a visible gap; a requirement that is not confirmed by the owner is visible too.
+
+**Automated now (finmore)**
+
+- `npm run lint:tests` (`scripts/lint-tests.cjs`): errors for swallowed errors, `test.skip/fixme/only`, `force: true`, fixed waits, tests with no assertion, tests that only check absence; warnings for weak assertions. A documented exception is a `lint-ok: <reason>` comment on the same line.
+- `npm run check:requirements` (`scripts/check-requirements.cjs`): every test needs a `requirement` annotation with known IDs, every requirement needs a test; prints the matrix and warns about unconfirmed requirements.
+- `failOnFlakyTests: true` in the Playwright config.
+- Both checks run in CI before the tests. The report shows the requirement IDs on each test and a Requirements table (result, basis confirmed / unconfirmed). The diagnosis treats a missing expected error message in a negative scenario as a probable app bug.
+
+**Current state and what is missing**
+
+- Testing so far was ad hoc: the expected results were observed in the live app during discovery. `requirements/requirements.json` is therefore a **draft derived from observation**; all 20 items are `confirmed: false` / `source: observed`. Until the product owner confirms or corrects them (`confirmed: true`, `source: "owner"` or the spec reference), a bug that existed on day one would still be "expected".
+- Principle 6 is a manual rule so far (no mutation job yet).
+- The same checks are not yet in the premiereonline project.
 
 ---
 

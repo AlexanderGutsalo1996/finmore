@@ -17,7 +17,7 @@ const reporter: ReporterDescription[] = [
   // detail:false keeps only our labelled test.step()s in Allure; Playwright's internal API steps
   // (e.g. `Fill "<value>"`) would otherwise print typed values, including passwords.
   ['allure-playwright', { resultsDir: 'allure-results', detail: false }],
-  ['./reporters/neon-tracker.ts'],
+  ['./reporters/test-tracker.ts'],
 ];
 if (isCI) {
   reporter.push(['json', { outputFile: 'playwright-summary.json' }]);
@@ -29,6 +29,7 @@ export default defineConfig({
   testDir: './tests',
   fullyParallel: true,
   forbidOnly: isCI,
+  failOnFlakyTests: true, // a test that needed a retry is a failure to investigate, not a pass
   retries: isCI ? 2 : 0, // local 0, CI 2
   workers: isCI ? 1 : Number(process.env.WORKERS) || undefined, // CI 1, local configurable
   reporter,

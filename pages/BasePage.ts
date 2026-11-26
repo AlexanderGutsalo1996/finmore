@@ -32,15 +32,15 @@ export abstract class BasePage {
         // Captions never show typed values: fills and value checks get a generic text.
         const evidence = evidenceFor(this.page);
         const caption = message.startsWith('Fill ') ? 'Fill form field' : message.startsWith('Expect value ') ? 'Verify field value' : message;
-        await evidence?.caption(caption).catch(() => {});
+        await evidence?.caption(caption).catch(() => {}); // lint-ok: an evidence overlay must never fail a test
 
         try {
             const result = await test.step(message, action);
-            if (this.quiet === 0) await evidence?.pace(message).catch(() => {});
-            if (message.startsWith('Expect ')) await evidence?.checkpoint(caption).catch(() => {});
+            if (this.quiet === 0) await evidence?.pace(message).catch(() => {}); // lint-ok: an evidence overlay must never fail a test
+            if (message.startsWith('Expect ')) await evidence?.checkpoint(caption).catch(() => {}); // lint-ok: an evidence overlay must never fail a test
             return result;
         } catch (error) {
-            await evidence?.caption(caption, 'fail').catch(() => {});
+            await evidence?.caption(caption, 'fail').catch(() => {}); // lint-ok: an evidence overlay must never fail a test
             const reason = error instanceof Error ? error.message.split('\n')[0] : String(error);
             this.logger.error(`${message} -> FAILED: ${reason}`);
             throw error;

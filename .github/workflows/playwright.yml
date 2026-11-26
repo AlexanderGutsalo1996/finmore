@@ -10,11 +10,8 @@ on:
         description: 'Override BASE_URL (optional)'
         required: false
         type: string
-  schedule:
-    # 00:07 Kyiv, deliberately not :00 - GitHub delays scheduled runs most at the start of every hour
-    # (observed delays of several hours). Change the time here only.
-    - cron: '7 0 * * *'
-      timezone: 'Europe/Kyiv'
+  # No `schedule:` trigger on purpose: GitHub starts scheduled runs hours late. The nightly 00:07 Europe/Kyiv run is
+  # started from outside through workflow_dispatch (see README, "Scheduled run").
 
 permissions:
   contents: read
@@ -30,7 +27,7 @@ jobs:
     timeout-minutes: 60
     outputs:
       allure_html_url: ${{ steps.allure_html.outputs.artifact-url }} # direct download link of the Allure HTML artifact
-      tracker_url: ${{ steps.tracker.outputs.artifact-url }} # direct download link of the neon tracker artifact
+      tracker_url: ${{ steps.tracker.outputs.artifact-url }} # direct download link of the test tracker artifact
       pw_url: ${{ steps.pw_report.outputs.artifact-url }} # direct download link of the Playwright report artifact
     env:
       CI: true
@@ -47,6 +44,11 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npx playwright install --with-deps chromium
+
+      - name: Check test quality (weak assertions, requirement links)
+        run: |
+          npm run lint:tests
+          npm run check:requirements
 
       - name: Run Playwright tests
         run: npx playwright test
@@ -98,12 +100,12 @@ jobs:
           retention-days: 30
           if-no-files-found: ignore
 
-      - name: Upload neon tracker (HTML + evidence videos/screenshots)
+      - name: Upload test tracker (HTML + evidence videos/screenshots)
         id: tracker
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: neon-tracker
+          name: test-tracker
           path: tracker-report/
           retention-days: 30
           if-no-files-found: ignore

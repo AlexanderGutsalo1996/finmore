@@ -7,6 +7,7 @@ import type { RegistrationValidationExpectation } from '../pages/RegistrationPag
 interface RegistrationValidationCase {
   case: string;
   values: Partial<RegistrationData>;
+  requirement: string;
   expected: RegistrationValidationExpectation;
 }
 
@@ -20,7 +21,7 @@ test.describe('TC-03: Registration page — fields and visibility', () => {
     });
   });
 
-  test('TC-03: form elements are displayed', async ({ registrationPage }) => {
+  test('TC-03: form elements are displayed', { annotation: { type: 'requirement', description: 'REG-01, REG-02' } }, async ({ registrationPage }) => {
     await test.step('Check heading, fields, button and links', async () => {
       await registrationPage.expectFormElements(registrationData.page);
     });
@@ -38,7 +39,7 @@ test.describe('TC-03: Registration page — fields and visibility', () => {
     });
   });
 
-  test('TC-03: link back to the login page works', async ({ registrationPage, loginPage }) => {
+  test('TC-03: link back to the login page works', { annotation: { type: 'requirement', description: 'REG-03' } }, async ({ registrationPage, loginPage }) => {
     await test.step('Click the login link', async () => {
       await registrationPage.openLogin();
     });
@@ -57,7 +58,7 @@ test.describe('TC-04: Registration — functionality and validation', () => {
     });
   });
 
-  test('TC-04A: a new user registers successfully', async ({ newUser, registrationPage, dashboardPage }) => {
+  test('TC-04A: a new user registers successfully', { annotation: { type: 'requirement', description: 'REG-04' } }, async ({ newUser, registrationPage, dashboardPage }) => {
     await test.step('Submit the form with valid unique data', async () => {
       await registrationPage.register(newUser);
     });
@@ -69,7 +70,7 @@ test.describe('TC-04: Registration — functionality and validation', () => {
 
   const validationCases: RegistrationValidationCase[] = registrationData.validation;
   for (const row of validationCases) {
-    test(`TC-04B: validation — ${row.case}`, async ({ registrationPage, dashboardPage }) => {
+    test(`TC-04B: validation — ${row.case}`, { annotation: { type: 'requirement', description: row.requirement } }, async ({ registrationPage, dashboardPage }) => {
       await test.step('Submit the form with the case values over valid data', async () => {
         await registrationPage.register(generateRegistrationData(row.values));
       });
@@ -81,7 +82,7 @@ test.describe('TC-04: Registration — functionality and validation', () => {
     });
   }
 
-  test('TC-04C: an already registered email is rejected', async ({ registrationPage, dashboardPage }) => {
+  test('TC-04C: an already registered email is rejected', { annotation: { type: 'requirement', description: 'REG-10' } }, async ({ registrationPage, dashboardPage }) => {
     await test.step('Submit valid data with the email of an existing user', async () => {
       await registrationPage.register(generateRegistrationData({ email: registrationData.existingUser.email }));
     });
