@@ -700,7 +700,7 @@ Final report to the user: what was done, V1–V16 results, deviations (with reas
 - [ ] `.env.local` created from `.env.example` in Phase 1 and ignored by Git (the agent never writes secrets into it); `.env.example` committed (no BOM, no values), secrets only in GitHub Secrets; nothing sensitive in Git, reports or logs.
 - [ ] Unique users registered via UI; generated users stored securely (local, per-file, ignored); cleanup implemented where supported, otherwise documented.
 - [ ] Tests independent; Chromium default; local workers configurable, CI 1; retries local 0 / CI 2; no tags.
-- [ ] Test validity (Section 18): every test names a requirement; `lint:tests` and `check:requirements` pass; flaky = failure; requirements confirmed by the owner (or visibly marked as unconfirmed).
+- [ ] Test validity (Section 18): `lint:tests` passes; a test that needed a retry counts as a failure.
 - [ ] Screenshots, traces, videos on failure.
 - [ ] Allure generated and auto-opened locally (Windows + macOS); Allure + Playwright HTML uploaded as artifacts and published to Pages when permitted.
 - [ ] Workflow with triggers: push `main`, PR, the nightly 00:07 `Europe/Kyiv` run (external trigger), manual.
@@ -730,26 +730,24 @@ A green test only means "the test agrees with the application", not "the applica
 
 **Principles**
 
-1. **The oracle is outside the application.** Expected results come from requirements or acceptance criteria, not from observing the running app. A check written from observation is a *characterization* (regression guard) and must be labelled as such; it never proves correctness.
+1. **The oracle is outside the application.** Expected results come from requirements or acceptance criteria, not from observing the running app. A check written from observation is a *characterization* (regression guard) and must be treated as such; it never proves correctness.
 2. **Never fix a test to make it green.** After a failure first decide: product bug, test defect or environment. An expectation may change only with a reference to a requirement or ticket. The report's diagnosis supports this triage.
 3. **A negative scenario proves the app rejects wrong input.** The test does something wrong on purpose and expects a rejection (message, no navigation, no state change). If the expected message is missing, the app most likely accepted the input: a probable product bug (the report says so), not a reason to relax the test. Assert both the rejection and that the forbidden outcome did not happen.
 4. **Assert the outcome, not the absence of errors.** Every test ends with a positive check of the expected result. No swallowed errors, conditional skips, `force: true`, fixed waits, or tests without an assertion.
 5. **A test that needed a retry is a failure.** Retries only exist to capture the trace of the failed attempt; the run still fails (`failOnFlakyTests`).
 6. **A test must be able to fail.** Before a new or changed test is trusted, see it fail once against broken behaviour (a sabotaged expectation or a faulty app state). Later this can be automated with fault injection.
-7. **Traceability.** Every test names the requirement(s) it verifies; every requirement has a test; a requirement without a test is a visible gap; a requirement that is not confirmed by the owner is visible too.
 
-**Automated now (finmore)**
+**Automated now**
 
-- `npm run lint:tests` (`scripts/lint-tests.cjs`): errors for swallowed errors, `test.skip/fixme/only`, `force: true`, fixed waits, tests with no assertion, tests that only check absence; warnings for weak assertions. A documented exception is a `lint-ok: <reason>` comment on the same line.
-- `npm run check:requirements` (`scripts/check-requirements.cjs`): every test needs a `requirement` annotation with known IDs, every requirement needs a test; prints the matrix and warns about unconfirmed requirements.
-- `failOnFlakyTests: true` in the Playwright config.
-- Both checks run in CI before the tests. The report shows the requirement IDs on each test and a Requirements table (result, basis confirmed / unconfirmed). The diagnosis treats a missing expected error message in a negative scenario as a probable app bug.
+- `npm run lint:tests` (`scripts/lint-tests.cjs`): errors for swallowed errors, `test.skip/fixme/only`, `force: true`, fixed waits, tests with no assertion, tests that only check absence; warnings for weak assertions. A documented exception is a `lint-ok: <reason>` comment on the same line. It runs in CI before the tests.
+- `failOnFlakyTests: true` in the Playwright config; Slack says "Failed: flaky tests".
+- The report's diagnosis treats a missing expected error message in a negative scenario as a probable app bug.
 
-**Current state and what is missing**
+**Current state**
 
-- Testing so far was ad hoc: the expected results were observed in the live app during discovery. `requirements/requirements.json` is therefore a **draft derived from observation**; all 20 items are `confirmed: false` / `source: observed`. Until the product owner confirms or corrects them (`confirmed: true`, `source: "owner"` or the spec reference), a bug that existed on day one would still be "expected".
-- Principle 6 is a manual rule so far (no mutation job yet).
-- The same checks are not yet in the premiereonline project.
+- Testing so far was ad hoc: the expected results were observed in the live app during discovery, so principle 1 is not met yet. This demo project deliberately has no requirements register and no traceability checks (an earlier draft of a register and a traceability check exists in the git history, commit `385e9b3`, if a real project needs it).
+- Principle 6 is a manual rule (no mutation job yet).
+- The lint check is not yet in the premiereonline project.
 
 ---
 

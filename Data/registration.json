@@ -2,53 +2,21 @@
   "page": {
     "title": "Повнофункціональний фінансовий менеджер",
     "heading": "Реєстрація",
-    "name": {
-      "type": "text",
-      "placeholder": "Іван Петренко"
-    },
-    "email": {
-      "type": "email",
-      "placeholder": "your@email.com"
-    },
-    "password": {
-      "type": "password",
-      "placeholder": "Мінімум 6 символів"
-    },
-    "confirmPassword": {
-      "type": "password",
-      "placeholder": "Повторіть пароль"
-    },
-    "passwordToggle": {
-      "labelWhenHidden": "Show password",
-      "labelWhenShown": "Hide password"
-    },
-    "currency": {
-      "default": "UAH",
-      "options": [
-        "UAH",
-        "USD",
-        "EUR",
-        "GBP"
-      ]
-    },
+    "name": { "type": "text", "placeholder": "Іван Петренко" },
+    "email": { "type": "email", "placeholder": "your@email.com" },
+    "password": { "type": "password", "placeholder": "Мінімум 6 символів" },
+    "confirmPassword": { "type": "password", "placeholder": "Повторіть пароль" },
+    "passwordToggle": { "labelWhenHidden": "Show password", "labelWhenShown": "Hide password" },
+    "currency": { "default": "UAH", "options": ["UAH", "USD", "EUR", "GBP"] },
     "submitText": "Зареєструватися",
     "loginLinkText": "Увійти"
   },
-  "passwordPolicy": {
-    "minLength": 6
-  },
-  "existingUser": {
-    "email": "user@demo.com"
-  },
+  "passwordPolicy": { "minLength": 6 },
+  "existingUser": { "email": "user@demo.com" },
   "validation": [
     {
       "case": "empty form",
-      "requirement": "REG-05",
-      "values": {
-        "name": "",
-        "email": "",
-        "password": ""
-      },
+      "values": { "name": "", "email": "", "password": "" },
       "expected": {
         "errors": {
           "name": "Ім'я обов'язкове",
@@ -60,66 +28,29 @@
     },
     {
       "case": "name too short",
-      "requirement": "REG-06",
-      "values": {
-        "name": "A"
-      },
-      "expected": {
-        "errors": {
-          "name": "Ім'я повинно містити мінімум 2 символи"
-        }
-      }
+      "values": { "name": "A" },
+      "expected": { "errors": { "name": "Ім'я повинно містити мінімум 2 символи" } }
     },
     {
       "case": "invalid email format",
-      "requirement": "REG-07",
-      "values": {
-        "email": "a@b"
-      },
-      "expected": {
-        "errors": {
-          "email": "Невірний формат email"
-        }
-      }
+      "values": { "email": "a@b" },
+      "expected": { "errors": { "email": "Невірний формат email" } }
     },
     {
       "case": "password shorter than policy",
-      "requirement": "REG-08",
-      "values": {
-        "password": "12345"
-      },
-      "expected": {
-        "errors": {
-          "password": "Пароль повинен містити мінімум 6 символів"
-        }
-      }
+      "values": { "password": "12345" },
+      "expected": { "errors": { "password": "Пароль повинен містити мінімум 6 символів" } }
     },
     {
       "case": "empty password confirmation",
-      "requirement": "REG-05",
-      "values": {
-        "confirmPassword": ""
-      },
-      "expected": {
-        "errors": {
-          "confirmPassword": "Підтвердження паролю обов'язкове"
-        }
-      }
+      "values": { "confirmPassword": "" },
+      "expected": { "errors": { "confirmPassword": "Підтвердження паролю обов'язкове" } }
     },
     {
       "case": "password confirmation mismatch",
-      "requirement": "REG-09",
-      "values": {
-        "confirmPassword": "Different#12345"
-      },
-      "expected": {
-        "errors": {
-          "confirmPassword": "Паролі не співпадають"
-        }
-      }
+      "values": { "confirmPassword": "Different#12345" },
+      "expected": { "errors": { "confirmPassword": "Паролі не співпадають" } }
     }
   ],
-  "messages": {
-    "duplicateEmail": "Користувач з таким email вже існує"
-  }
+  "messages": { "duplicateEmail": "Користувач з таким email вже існує" }
 }

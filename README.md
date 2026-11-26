@@ -68,7 +68,6 @@ BASE_URL=https://staging.example.com npm test
 | `npx playwright test --repeat-each=5` | Flakiness check |
 | `npm run typecheck` | TypeScript check |
 | `npm run lint:tests` | Test quality lint: swallowed errors, skips, fixed waits, tests without assertions |
-| `npm run check:requirements` | Traceability: every test names a requirement, every requirement has a test |
 | `npm run report:html` | Open the last Playwright HTML report |
 | `npm run report:allure` | Generate and open Allure from `allure-results` |
 | `npm run report:tracker` | Open the last neon tracker report (`tracker-report/index.html`) |
@@ -98,8 +97,7 @@ Rules:
 - **Data:** static inputs and expected results in JSON; unique/dynamic data only via `Data/generators.ts`. Test titles contain only the JSON `case` label (never emails or passwords), because Slack shows titles.
 - **Sensitive values** (`{ sensitive: true }` in `BasePage.fill/expectValue`) are masked in logs and step titles.
 - **Independence:** every test creates its own data/preconditions; safe under `fullyParallel`.
-- **Every test names its requirement** (`annotation: { type: 'requirement', description: 'LOGIN-03' }`, or `requirement` in the data row). `requirements/requirements.json` is the register; today it is a draft derived from ad hoc testing, so all items are `confirmed: false` until the owner confirms them. The report shows this.
-- **A green test must mean a correct product:** negative scenarios assert the rejection, a test that needed a retry counts as failed (`failOnFlakyTests`), and `lint:tests` / `check:requirements` run before the tests in CI. See Section 18 of `IMPLEMENTATION_PLAN.md`.
+- **A green test must mean a correct product:** negative scenarios assert the rejection, a test that needed a retry counts as failed (`failOnFlakyTests`), and `lint:tests` runs before the tests in CI. See Section 18 of `IMPLEMENTATION_PLAN.md`.
 
 ## 7. How to add…
 
@@ -120,7 +118,7 @@ Rules:
 
 ## 9. CI (GitHub Actions)
 
-`.github/workflows/playwright.yml` — triggers: push to `main`, pull requests, manual (`workflow_dispatch`, optional `base_url`), and a **nightly run at 00:07 `Europe/Kyiv`** started from outside (see "Scheduled run" below). Jobs: `ui` (typecheck, tests, Allure, artifacts) → `pages` (optional) → `notify` (Slack, always). CI uses 1 worker and 2 retries; a test that passes only on a retry still fails the run (the retry only captures the trace). Before the tests the job runs `lint:tests` and `check:requirements`.
+`.github/workflows/playwright.yml` — triggers: push to `main`, pull requests, manual (`workflow_dispatch`, optional `base_url`), and a **nightly run at 00:07 `Europe/Kyiv`** started from outside (see "Scheduled run" below). Jobs: `ui` (typecheck, tests, Allure, artifacts) → `pages` (optional) → `notify` (Slack, always). CI uses 1 worker and 2 retries; a test that passes only on a retry still fails the run (the retry only captures the trace). Before the tests the job runs `lint:tests`.
 
 Configure in the GitHub repository (Settings → Secrets and variables → Actions):
 

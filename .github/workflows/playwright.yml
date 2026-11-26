@@ -45,10 +45,8 @@ jobs:
       - run: npm run typecheck
       - run: npx playwright install --with-deps chromium
 
-      - name: Check test quality (weak assertions, requirement links)
-        run: |
-          npm run lint:tests
-          npm run check:requirements
+      - name: Check test quality (weak assertions, swallowed errors, missing assertions)
+        run: npm run lint:tests
 
       - name: Run Playwright tests
         run: npx playwright test

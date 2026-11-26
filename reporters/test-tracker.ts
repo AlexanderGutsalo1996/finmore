@@ -44,16 +44,6 @@ interface EvidenceFile {
   url: string;
 }
 
-interface RequirementRow {
-  id: string;
-  area: string;
-  text: string;
-  source: string;
-  confirmed: boolean;
-  status: string;
-  tests: number;
-}
-
 interface ApiCall {
   method: string;
   url: string;
@@ -86,7 +76,6 @@ interface TestRecord {
   videos: EvidenceFile[];
   specVideo?: string;
   apiCalls?: ApiCall[];
-  requirements: string[];
   trace?: EvidenceFile;
   rerun: string;
 }
@@ -264,23 +253,6 @@ function diagnose(message: string, flaky: boolean, timedOut: boolean, ctx: { ste
 
 // ───────────────────────── Reporter ─────────────────────────
 
-// Requirements register (requirements/requirements.json) joined with the results of the tests that cover each item.
-function requirementsSummary(records: TestRecord[]) {
-  const file = resolve(process.cwd(), 'requirements', 'requirements.json');
-  if (!existsSync(file)) return undefined;
-  try {
-    const register = JSON.parse(readFileSync(file, 'utf8')) as { note?: string; requirements: Omit<RequirementRow, 'status' | 'tests'>[] };
-    const items: RequirementRow[] = register.requirements.map((r) => {
-      const linked = records.filter((t) => t.requirements.includes(r.id));
-      const status = !linked.length ? 'none' : linked.some((t) => t.status === 'failed') ? 'failed' : linked.some((t) => t.status === 'flaky') ? 'flaky' : linked.every((t) => t.status === 'skipped') ? 'none' : 'passed';
-      return { ...r, status, tests: linked.length };
-    });
-    return { note: register.note ?? '', items };
-  } catch {
-    return undefined;
-  }
-}
-
 export default class TestTrackerReporter implements Reporter {
   private suite?: Suite;
   private config?: FullConfig;
@@ -352,7 +324,6 @@ export default class TestTrackerReporter implements Reporter {
           }
         : undefined,
       counts,
-      requirements: requirementsSummary(records),
       tests: records,
     };
     const indexFile = join(out, 'index.html');
@@ -386,10 +357,6 @@ export default class TestTrackerReporter implements Reporter {
       screenshots: [],
       videos: [],
       rerun: `${file}:${test.location.line}`,
-      requirements: test.annotations
-        .filter((a) => a.type === 'requirement')
-        .flatMap((a) => (a.description ?? '').split(/[ ,;]+/))
-        .filter(Boolean),
     };
 
     if (shown) {
@@ -591,12 +558,6 @@ details.raw>summary{cursor:pointer;color:var(--muted);font-size:13px}
 .call .cb{padding:0 12px 12px}.k2{margin:8px 0 2px;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
 .chip.s2{color:var(--green);border-color:var(--green)}.chip.s3{color:var(--accent);border-color:var(--accent)}.chip.s4{color:var(--amber);border-color:var(--amber)}.chip.s5{color:var(--red);border-color:var(--red)}
 .note{margin:12px 0;padding:10px 14px;border-radius:var(--radius);border:1px dashed var(--line);color:var(--muted);font-size:13px}
-.reqids{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:1px 8px}
-.reqs{margin:0 0 16px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);box-shadow:var(--shadow)}
-.reqs>summary{cursor:pointer;padding:10px 14px;font-weight:600}.reqs .unc{margin-left:12px;font-weight:400;color:var(--amber)}
-.reqs .note{margin:0 14px 10px}
-.reqs table{width:calc(100% - 28px);margin:0 14px 14px;border-collapse:collapse;font-size:13px}
-.reqs th,.reqs td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}.reqs th{color:var(--muted);font-weight:600;font-size:12px}
 `;
 
 const JS = `
@@ -657,25 +618,10 @@ function evidence(t){
   return h;
 }
 
-function reqs(){
-  if(!D.requirements)return '';
-  var it=D.requirements.items,cnt={passed:0,failed:0,flaky:0,none:0},unc=0;
-  it.forEach(function(r){cnt[r.status]++;if(!r.confirmed)unc++});
-  var h='<details class="reqs"'+(cnt.failed?' open':'')+'><summary>Requirements: '+cnt.passed+' passed, '+cnt.failed+' failed'+(cnt.flaky?', '+cnt.flaky+' flaky':'')+(cnt.none?', '+cnt.none+' without a result':'')+(unc?'<span class="unc">'+unc+' of '+it.length+' unconfirmed</span>':'')+'</summary>';
-  if(unc)h+='<div class="note">'+esc(D.requirements.note)+'</div>';
-  h+='<table><thead><tr><th>ID</th><th>Requirement</th><th>Tests</th><th>Result</th><th>Basis</th></tr></thead><tbody>';
-  it.forEach(function(r){
-    var cls=r.status==='none'?'skipped':r.status,lab=r.status==='none'?'no result':r.status;
-    h+='<tr><td><b>'+esc(r.id)+'</b></td><td>'+esc(r.text)+'</td><td>'+r.tests+'</td><td><span class="badge '+cls+'">'+esc(lab.toUpperCase())+'</span></td><td>'+(r.confirmed?'confirmed':'unconfirmed ('+esc(r.source)+')')+'</td></tr>';
-  });
-  return h+'</tbody></table></details>';
-}
-
 function card(t){
   var open=t.status==='failed'||t.status==='flaky';
   var h='<details class="test '+t.status+'" data-status="'+t.status+'" data-q="'+esc((t.group+' '+t.title+' '+t.file).toLowerCase())+'"'+(open?' open':'')+'><summary>';
   h+='<span class="badge '+t.status+'">'+LABEL[t.status]+'</span><span class="ttl">'+esc(t.title)+'<small>'+esc((t.group?t.group+'  \\u00b7  ':'')+t.file+':'+t.line)+'</small></span>';
-  if(t.requirements&&t.requirements.length)h+='<span class="reqids">'+esc(t.requirements.join(', '))+'</span>';
   if(t.diagnosis)h+='<span class="chip '+t.diagnosis.verdict+'">'+VERDICT[t.diagnosis.verdict]+'</span>';
   h+='<span class="dur">'+fmt(t.ms)+(t.attempts>1?'  \\u00b7  '+t.attempts+' attempts':'')+'</span></summary><div class="body">';
   if(t.failedPath||t.error){
@@ -748,7 +694,6 @@ document.querySelectorAll('[data-theme-btn]').forEach(function(b){b.addEventList
 
 var html=banner;
 html+='<div class="charts">'+donut('Specs',Object.keys(specStat).length,specCounts)+donut('Tests',total,c)+donut('Steps',stepTotal,{passed:stepTotal-stepFailed,failed:stepFailed})+'</div>';
-html+=reqs();
 html+='<div class="tools">'+['all','failed','flaky','passed','skipped'].map(function(f){var n=f==='all'?total:c[f];return '<button class="pill'+(f==='all'?' on':'')+'" data-filter="'+f+'">'+f+' '+n+'</button>'}).join('')+'<input class="search" type="search" placeholder="Search tests and files ( / )" aria-label="Search tests"></div>';
 html+='<div id="list">'+D.tests.map(card).join('')+'</div>';
 if(!D.tests.length)html+='<div class="empty">No tests in this run.</div>';
